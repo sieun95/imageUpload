@@ -81,6 +81,7 @@ userRouter.get("/me/images", async (req, res) => {
   try {
     if (!req.user) throw new Error("권한이 없습니다.");
     const images = await Image.find({ "user._id": req.user.id });
+    console.log(images);
     res.json(images);
   } catch (err) {
     console.error(err);

@@ -6,16 +6,18 @@ import ProgressBar from "./ProgressBar";
 import { ImageContext } from "../context/ImageContext";
 
 const UploadForm = () => {
-  const [images, setImages] = useContext(ImageContext);
+  const { images, setImages, myImages, setMyImages } = useContext(ImageContext);
   const defaultFileName = "이미지 파일을 업로드 해주세요";
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState(null);
   const [imgSrc, setImgSrc] = useState(null);
   const [fileName, setFileName] = useState(defaultFileName);
   const [percent, setPercent] = useState(0);
+  const [isPublic, setIsPublic] = useState(true);
 
-  const imageSelectHandler = (e) => {
-    const imageFile = e.target.files[0];
-    setFile(imageFile);
+  const imageSelectHandler = (event) => {
+    const imageFiles = event.target.files;
+    setFiles(imageFiles);
+    const imageFile = imageFiles[0];
     setFileName(imageFile.name);
     const fileReader = new FileReader();
     fileReader.readAsDataURL(imageFile);
@@ -25,7 +27,11 @@ const UploadForm = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
-    formData.append("image", file);
+    for (let file of files) {
+      formData.append("image", file);
+    }
+
+    formData.append("public", isPublic);
     try {
       const result = await axios.post(
         "http://localhost:4000/images",
@@ -37,6 +43,8 @@ const UploadForm = () => {
           },
         }
       );
+      if (isPublic) setImages([...images, ...result.data]);
+      else setMyImages([...myImages, ...result.data]);
       toast.success("success");
       setTimeout(() => {
         setPercent(0);
@@ -44,7 +52,7 @@ const UploadForm = () => {
         setImgSrc(null);
       }, 3000);
     } catch (err) {
-      toast.error("fail");
+      toast.error(err.response.data.message);
       setPercent(0);
       setFileName(defaultFileName);
       setImgSrc(null);
@@ -53,17 +61,29 @@ const UploadForm = () => {
   };
   return (
     <form onSubmit={onSubmit}>
-      <img src={imgSrc} className="image-preview" />
+      <img
+        src={imgSrc}
+        alt=""
+        className={`image-preview ${imgSrc && "image-preview-show"}`}
+      />
       <ProgressBar percent={percent} />
       <div className="file-dropper">
         {fileName}
         <input
           id="image"
           type="file"
+          multiple
           accept="image/*"
           onChange={imageSelectHandler}
         />
       </div>
+      <input
+        type="checkbox"
+        id="public-check"
+        value={isPublic}
+        onChange={() => setIsPublic(!isPublic)}
+      />
+      <label htmlFor="public-check">비공개</label>
       <div>
         <button type="submit" className="file-button">
           submit

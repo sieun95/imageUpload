@@ -8,21 +8,26 @@ const mongoose = require("mongoose");
 
 const fileUnlink = promisify(fs.unlink);
 
-imageRouter.post("/", upload.single("image"), async (req, res) => {
-  // 유저 덩보, public 유무 확인
+imageRouter.post("/", upload.array("image", 5), async (req, res) => {
+  // 유저 정보, public 유무 확인
   try {
     if (!req.user) throw new Error("권한이 없습니다.");
-    const image = await new Image({
-      user: {
-        _id: req.user.id,
-        name: req.user.name,
-        username: req.user.username,
-      },
-      public: req.body.public,
-      key: req.file.filename,
-      originalFileName: req.file.originalFileName,
-    }).save();
-    res.json(image);
+    const images = await Promise.all(
+      req.files.map(async (file) => {
+        const image = await new Image({
+          user: {
+            _id: req.user.id,
+            name: req.user.name,
+            username: req.user.username,
+          },
+          public: req.body.public,
+          key: file.filename,
+          originalFileName: file.originalFileName,
+        }).save();
+        return image;
+      })
+    );
+    res.json(images);
   } catch (err) {
     console.error(err);
     res.status(400).json({ message: err.message });
